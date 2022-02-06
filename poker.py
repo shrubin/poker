@@ -110,16 +110,17 @@ if __name__ == '__main__':
     print('Enter 5 card values and suits, with cards separated by spaces')
     print('Values from 2-10 or JQKA, suits from HSDC ex. "2C AD 7C KS 10H"')
     try:
-        print('Enter the first hand:')
-        hand1 = Hand(input())
-        print('Enter the second hand:')
-        hand2 = Hand(input())
-        result = betterHand(hand1, hand2)
-        if result == Result.WIN:
-            print('Hand 1 wins')
-        elif result == Result.LOSE:
-            print('Hand 2 wins')
-        else:
-            print('Tie')
+        while True:
+            print('Enter the first hand:')
+            hand1 = Hand(input())
+            print('Enter the second hand:')
+            hand2 = Hand(input())
+            result = betterHand(hand1, hand2)
+            if result == Result.WIN:
+                print('Hand 1 wins')
+            elif result == Result.LOSE:
+                print('Hand 2 wins')
+            else:
+                print('Tie')
     except ValueError:
         print('Invalid input')
