@@ -7,7 +7,9 @@ class Suit(Enum):
     DIAMOND = 'Diamonds'
     CLUB = 'Clubs'
 
+# Used same values as the linked webpage for clarity
 class Rank(Enum):
+    # FIVE_KIND = 1, impossible without wild cards
     STRAIGHT_FLUSH = 2
     FOUR_KIND = 3
     FULL_HOUSE = 4
@@ -27,6 +29,7 @@ STR_TO_VAL = {'J': 11, 'Q': 12, 'K': 13, 'A': 14}
 STR_TO_SUIT = {'H': Suit.HEART, 'S': Suit.SPADE, 'D': Suit.DIAMOND, 'C': Suit.CLUB}
 
 class Card:
+    # Create a card, ensure valid value and suit
     def __init__(self, val):
         valStr, suitStr = val[:-1], val[-1]
         if valStr.isdigit() and 2 <= int(valStr) <= 10:
@@ -41,6 +44,7 @@ class Card:
             raise ValueError
 
 class Hand:
+    # Create all the cards in the hand, ensure there are 5 cards without duplicates
     def __init__(self, cardVals):
         vals = cardVals.split()
         if len(vals) != 5 or len(set(vals)) != 5:
@@ -48,11 +52,14 @@ class Hand:
         self.cards = [Card(val) for val in vals]
         self.evaluate()
 
+    # Evaluate the hand, giving a rank, rank-specific tiebreakers, and general tiebreakers
     def evaluate(self):
         self.vals = sorted(card.val for card in self.cards)
         flush = all(card.suit == self.cards[0].suit for card in self.cards)
         straight = all(self.vals[i] + 1 == self.vals[j] or (self.vals[j] == 14 and self.vals[0] == 2) for i,j in zip(range(4), range(1,5)))
         counts = Counter(self.vals).most_common()
+
+        # Check for each potential rank from highest to lowest
         self.tiebreaker = ()
         if flush and straight:
             self.rank = Rank.STRAIGHT_FLUSH
@@ -109,12 +116,21 @@ def betterHand(hand1, hand2):
 if __name__ == '__main__':
     print('Enter 5 card values and suits, with cards separated by spaces')
     print('Values from 2-10 or JQKA, suits from HSDC ex. "2C AD 7C KS 10H"')
+    print('Ctrl+C to exit')
+
+    def getHand():
+        while True:
+            try:
+                return Hand(input())
+            except ValueError:
+                print('Invalid input')
+
     try:
         while True:
             print('Enter the first hand:')
-            hand1 = Hand(input())
+            hand1 = getHand()        
             print('Enter the second hand:')
-            hand2 = Hand(input())
+            hand2 = getHand()
             result = betterHand(hand1, hand2)
             if result == Result.WIN:
                 print('Hand 1 wins')
@@ -122,5 +138,5 @@ if __name__ == '__main__':
                 print('Hand 2 wins')
             else:
                 print('Tie')
-    except ValueError:
-        print('Invalid input')
+    except KeyboardInterrupt:
+        pass
