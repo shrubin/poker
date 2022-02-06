@@ -7,6 +7,17 @@ class Suit(Enum):
     DIAMOND = 'Diamonds'
     CLUB = 'Clubs'
 
+class Rank(Enum):
+    STRAIGHT_FLUSH = 2
+    FOUR_KIND = 3
+    FULL_HOUSE = 4
+    FLUSH = 5
+    STRAIGHT = 6
+    THREE_KIND = 7
+    TWO_PAIR = 8
+    PAIR = 9
+    HIGH_CARD = 10
+
 class Result(Enum):
     WIN = 1
     LOSE = 2
@@ -14,7 +25,6 @@ class Result(Enum):
 
 STR_TO_VAL = {'J': 11, 'Q': 12, 'K': 13, 'A': 14}
 STR_TO_SUIT = {'H': Suit.HEART, 'S': Suit.SPADE, 'D': Suit.DIAMOND, 'C': Suit.CLUB}
-VAL_TO_STR = {11: 'Jack', 12: 'Queen', 13: 'King', 14: 'Ace'}
 
 class Card:
     def __init__(self, val):
@@ -30,54 +40,71 @@ class Card:
         else:
             raise ValueError
 
-    def __str__(self):
-        valStr = VAL_TO_STR[self.val] if self.val in VAL_TO_STR else str(self.val)
-        return '{0} of {1}'.format(valStr, self.suit.value)
-
 class Hand:
     def __init__(self, cardVals):
         vals = cardVals.split()
         if len(vals) != 5 or len(set(vals)) != 5:
             raise ValueError
         self.cards = [Card(val) for val in vals]
-        self.getRank()
+        self.evaluate()
 
-    def __str__(self):
-        return ', '.join([str(card) for card in self.cards])
-
-    def getRank(self):
-        vals = sorted(card.val for card in self.cards)
-        self.highcard = vals[-1]
+    def evaluate(self):
+        self.vals = sorted(card.val for card in self.cards)
         flush = all(card.suit == self.cards[0].suit for card in self.cards)
-        straight = all(vals[i] + 1 == vals[j] or (vals[j] == 14 and vals[0] == 2) for i,j in zip(range(4), range(1,5)))
-        counts = Counter(vals)
-        numMatches = counts.most_common(1)[0][1]
+        straight = all(self.vals[i] + 1 == self.vals[j] or (self.vals[j] == 14 and self.vals[0] == 2) for i,j in zip(range(4), range(1,5)))
+        counts = Counter(self.vals).most_common()
+        self.tiebreaker = ()
         if flush and straight:
-            self.rank = 2
-        elif numMatches == 4:
-            self.rank = 3
-        elif numMatches == 3 and len(counts) == 2:
-            self.rank = 4
+            self.rank = Rank.STRAIGHT_FLUSH
+            if self.vals[-1] == 14 and self.vals[0] == 2:
+                self.vals[-1] = 1
+                self.vals.sort()
+        elif counts[0][1] == 4:
+            self.rank = Rank.FOUR_KIND
+            self.tiebreaker = counts[0][0],
+        elif counts[0][1] == 3 and counts[1][1] == 2:
+            self.rank = Rank.FULL_HOUSE
+            self.tiebreaker = counts[0][0], counts[1][0]
         elif flush:
-            self.rank = 5
+            self.rank = Rank.FLUSH
         elif straight:
-            self.rank = 6
-        elif numMatches == 3:
-            self.rank = 7
-        elif numMatches == 2 and len(counts) == 3:
-            self.rank = 8
-        elif numMatches == 2:
-            self.rank = 9
+            self.rank = Rank.STRAIGHT
+            if self.vals[-1] == 14 and self.vals[0] == 2:
+                self.vals[-1] = 1
+                self.vals.sort()
+        elif counts[0][1] == 3:
+            self.rank = Rank.THREE_KIND
+            self.tiebreaker = counts[0][0],
+        elif counts[0][1] == 2 and counts[1][1] == 2:
+            self.rank = Rank.TWO_PAIR
+            self.tiebreaker = max(counts[0][0], counts[1][0]), min(counts[0][0], counts[1][0])
+        elif counts[0][1] == 2:
+            self.rank = Rank.PAIR
+            self.tiebreaker = counts[0][0],
         else:
-            self.rank = 10
+            self.rank = Rank.HIGH_CARD
 
+# Assume it is okay to have duplicates across hands, ie the same card can be in both hands
 def betterHand(hand1, hand2):
-    if hand1.rank < hand2.rank or (hand1.rank == hand2.rank and hand1.highcard > hand2.highcard):
+    # Better ranked hand wins
+    if hand1.rank.value < hand2.rank.value:
         return Result.WIN
-    elif hand1.rank > hand2.rank or (hand1.rank == hand2.rank and hand1.highcard < hand2.highcard):
+    elif hand1.rank.value > hand2.rank.value:
         return Result.LOSE
-    else:
-        return Result.TIE
+    # Some hands have higher priority for certain cards, check those first for tiebreakers
+    for val1, val2 in zip(hand1.tiebreaker, hand2.tiebreaker):
+        if val1 > val2:
+            return Result.WIN
+        elif val1 < val2:
+            return Result.LOSE
+    # If the high priority tiebreakers are the same, any higher card wins
+    for i in range(4,-1,-1):
+        if hand1.vals[i] > hand2.vals[i]:
+            return Result.WIN
+        elif hand1.vals[i] < hand2.vals[i]:
+            return Result.LOSE
+    # Both hands have the same value
+    return Result.TIE
 
 if __name__ == '__main__':
     print('Enter 5 card values and suits, with cards separated by spaces')
